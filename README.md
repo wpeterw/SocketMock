@@ -2,6 +2,8 @@
 
   ![CI](https://github.com/wpeterw/SocketMock/actions/workflows/quality.yml/badge.svg)
   ![Coverage](https://img.shields.io/badge/coverage-20%25-red)
+  ![Gitleaks](https://github.com/wpeterw/SocketMock/actions/workflows/gitleaks.yml/badge.svg)
+  ![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)
 
   SocketMock is a protocol simulator for non-HTTP services. It listens on a TCP port
   like a real service, but you drive its behavior through a REST admin API instead
@@ -58,6 +60,11 @@
   a mock session for a protocol.
   - **Admin port** (default 8080): JSON REST API under `/__admin` for mappings,
     request history, and reset operations.
+  - **Protocol awareness**: the admin API is not a separate plugin registry. When
+    the app starts, `SocketMock/app.py` resolves the selected `--protocol`, creates
+    that plugin and its store, and then wires the admin app to that active plugin.
+    The routes are generic, but the current protocol name/description and the active
+    session store come from the plugin chosen at startup.
   - **Stub mapping**: a rule that matches incoming requests to a canned response,
     optionally including async follow-up behavior.
 
@@ -86,6 +93,11 @@
   `/__admin` API, polling regularly so anything you do via curl shows up there too.
 
   ## Admin API
+
+  The admin API is protocol-agnostic at the route level, but it is attached to the
+  plugin selected when the process starts. In practice, that means `/__admin/health`
+  reports the active protocol, and `/__admin/deliver` works against the active
+  plugin's session/store model for that run.
 
   | Method | Path                     | Purpose                                   |
   |--------|--------------------------|--------------------------------------------|

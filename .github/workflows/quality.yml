@@ -32,11 +32,6 @@ jobs:
       - name: Lint code
         run: uv run ruff check .
 
-      - name: Scan for secrets
-        uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Check typing
         run: uv run ty check .
 
