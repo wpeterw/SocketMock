@@ -1,0 +1,35 @@
+services:
+  socketmock:
+    build: .
+    image: socketmock:latest
+    container_name: socketmock
+    ports:
+      - "2775:2775"   # SocketMock: point your ESME/client at localhost:2775
+      - "8087:8080"   # admin API + dashboard: http://localhost:8080/
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/__admin/health', timeout=2)"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    # Stub mappings and the request journal live in memory only, so they
+    # reset whenever the container restarts -- that's intentional for a
+    # test double, but keep it in mind if you rely on `restart: unless-stopped`.
+
+    # Override the default flags if you need bind auth or different ports
+    # inside the container (still map the ports above to match):
+    # command: >
+    #   --host 0.0.0.0 --port 2775
+    #   --admin-host 0.0.0.0 --admin-port 8080
+    #   --credential loadtest:secret --credential otheruser:pw2
+    networks:
+      kdoc_kdoc-net:
+        aliases:
+          - smsc
+
+networks:
+  kdoc_kdoc-net:
+    external: true
+    name: kdoc_kdoc-net
+

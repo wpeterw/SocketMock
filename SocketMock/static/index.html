@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>socketmock console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-dot" id="healthDot"></span>
+    <span class="brand-name">socket<span class="brand-accent">mock</span></span>
+    <span class="brand-tag">wire console</span>
+  </div>
+
+  <canvas id="pulseStrip" class="pulse-strip" height="40"></canvas>
+
+  <div class="stat-cluster">
+    <div class="stat">
+      <span class="stat-value" id="statSessions">0</span>
+      <span class="stat-label">bound</span>
+    </div>
+    <div class="stat">
+      <span class="stat-value" id="statMappings">0</span>
+      <span class="stat-label">stubs</span>
+    </div>
+    <div class="stat">
+      <span class="stat-value" id="statRequests">0</span>
+      <span class="stat-label">PDUs</span>
+    </div>
+  </div>
+</header>
+
+<main class="console">
+
+  <!-- LEFT: sessions / patch bay -->
+  <section class="pane pane-sessions">
+    <div class="pane-head">
+      <h2>Sessions</h2>
+      <span class="pane-sub">bound connections</span>
+    </div>
+    <div id="sessionList" class="session-list">
+      <div class="empty-state">No ESME connected yet. Point a client at the SocketMock port.</div>
+    </div>
+
+    <div class="deliver-box">
+      <div class="pane-head">
+        <h3>Push to session</h3>
+        <span class="pane-sub">manual MO / receipt</span>
+      </div>
+      <form id="deliverForm">
+        <label>Session
+          <select id="dSession" required></select>
+        </label>
+        <div class="field-row">
+          <label>From
+            <input id="dSource" placeholder="254700000000" required>
+          </label>
+          <label>To
+            <input id="dDest" placeholder="447700900000" required>
+          </label>
+        </div>
+        <label>Text
+          <input id="dText" placeholder="Inbound test message" required>
+        </label>
+        <button type="submit" class="btn btn-primary">Send deliver_sm</button>
+      </form>
+      <div id="deliverStatus" class="form-status"></div>
+    </div>
+  </section>
+
+  <!-- CENTER: live trace -->
+  <section class="pane pane-trace">
+    <div class="pane-head">
+      <h2>Trace</h2>
+      <span class="pane-sub">live PDU feed</span>
+      <div class="pane-actions">
+        <label class="toggle">
+          <input type="checkbox" id="autoScroll" checked> autoscroll
+        </label>
+        <button id="clearJournal" class="btn btn-ghost btn-sm">Clear</button>
+      </div>
+    </div>
+    <div id="traceFeed" class="trace-feed">
+      <div class="empty-state">Waiting for traffic&hellip;</div>
+    </div>
+  </section>
+
+  <!-- RIGHT: stub mappings -->
+  <section class="pane pane-stubs">
+    <div class="pane-head">
+      <h2>Stub mappings</h2>
+      <span class="pane-sub">match &rarr; response rules</span>
+      <div class="pane-actions">
+        <button id="newStubBtn" class="btn btn-primary btn-sm">+ New</button>
+      </div>
+    </div>
+    <div id="stubList" class="stub-list">
+      <div class="empty-state">No stubs yet. Unmatched traffic still gets a default OK.</div>
+    </div>
+  </section>
+
+</main>
+
+<!-- New stub modal -->
+<div id="stubModal" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>New stub mapping</h3>
+      <button id="closeModal" class="btn btn-ghost btn-sm" aria-label="Close">&times;</button>
+    </div>
+    <form id="stubForm">
+      <div class="field-row">
+        <label>Command
+          <select id="sCommand">
+            <option value="submit_sm">submit_sm</option>
+            <option value="">any</option>
+          </select>
+        </label>
+        <label>Priority
+          <input id="sPriority" type="number" value="5" min="1" max="20">
+        </label>
+      </div>
+
+      <div class="fieldset-label">Match when short message&hellip;</div>
+      <div class="field-row">
+        <label>Type
+          <select id="sMatchType">
+            <option value="contains">contains</option>
+            <option value="equalTo">equals</option>
+            <option value="regex">matches regex</option>
+          </select>
+        </label>
+        <label>Value
+          <input id="sMatchValue" placeholder="PROMO">
+        </label>
+      </div>
+
+      <div class="fieldset-label">Response</div>
+      <div class="field-row">
+        <label>Status
+          <select id="sStatus">
+            <option value="0">0 &mdash; ESME_ROK</option>
+            <option value="1">1 &mdash; RINVMSGLEN</option>
+            <option value="4">4 &mdash; RINVBNDSTS</option>
+            <option value="11">11 &mdash; RINVDSTADR</option>
+            <option value="14">14 &mdash; RINVPASWD</option>
+            <option value="20">20 &mdash; RMSGQFUL</option>
+            <option value="88">88 &mdash; RTHROTTLED</option>
+          </select>
+        </label>
+        <label>Resp delay (ms)
+          <input id="sDelay" type="number" value="0" min="0">
+        </label>
+      </div>
+
+      <label class="checkbox-row">
+        <input type="checkbox" id="sReceiptEnabled">
+        Send an async delivery receipt
+      </label>
+
+      <div id="receiptFields" class="field-row hidden">
+        <label>Receipt delay (ms)
+          <input id="sReceiptDelay" type="number" value="1500" min="0">
+        </label>
+        <label>Final status
+          <select id="sFinalStatus">
+            <option>DELIVRD</option>
+            <option>UNDELIV</option>
+            <option>EXPIRED</option>
+            <option>REJECTD</option>
+            <option>DELETED</option>
+            <option>UNKNOWN</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" id="cancelStub" class="btn btn-ghost">Cancel</button>
+        <button type="submit" class="btn btn-primary">Create stub</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- PDU detail modal -->
+<div id="pduModal" class="modal-overlay hidden">
+  <div class="modal modal-wide">
+    <div class="modal-head">
+      <h3>PDU detail</h3>
+      <button id="closePduModal" class="btn btn-ghost btn-sm" aria-label="Close">&times;</button>
+    </div>
+    <pre id="pduDetail" class="pdu-detail"></pre>
+  </div>
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
