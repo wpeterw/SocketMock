@@ -1,7 +1,7 @@
-from SocketMock.plugins import ProtocolRegistry
-from SocketMock.plugins.smpp import StubStore
-from SocketMock.plugins.smpp.plugin import SMPPPlugin
-from SocketMock.server import ProtocolServer, SocketMockPlugin
+from socketmock.plugins import ProtocolRegistry
+from socketmock.plugins.smpp import StubStore
+from socketmock.plugins.smpp.plugin import SMPPPlugin
+from socketmock.server import ProtocolServer, SocketMockPlugin
 
 
 def test_smpp_plugin_is_registered() -> None:

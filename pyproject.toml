@@ -1,5 +1,5 @@
 [project]
-name = "SocketMock"
+name = "socketmock"
 version = "0.1.0"
 requires-python = ">=3.12"
 dependencies = ["aiohttp>=3.9"]
@@ -12,13 +12,13 @@ testpaths = ["tests"]
 pythonpath = ["."]
 
 [tool.coverage.run]
-source = ["SocketMock"]
+source = ["socketmock"]
 branch = true
 omit = [
-    "SocketMock/admin.py",
-    "SocketMock/app.py",
-    "SocketMock/plugins/_template/*",
-    "SocketMock/examples/*",
+    "socketmock/admin.py",
+    "socketmock/app.py",
+    "socketmock/plugins/_template/*",
+    "socketmock/examples/*",
 ]
 
 [tool.coverage.report]

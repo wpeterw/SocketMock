@@ -5,11 +5,11 @@ from unittest.mock import AsyncMock
 import pytest
 
 from libs.stubs import ProtocolStubStore, StubStore
-from SocketMock.plugins import discover_plugins
-from SocketMock.plugins.base import ProtocolPlugin, ProtocolRegistry, ProtocolSession
-from SocketMock.plugins.sftp.stubs import request_matches
-from SocketMock.plugins.smpp.stubs import next_seq, pdu_matches
-from SocketMock.server import ProtocolServer, SocketMockServer
+from socketmock.plugins import discover_plugins
+from socketmock.plugins.base import ProtocolPlugin, ProtocolRegistry, ProtocolSession
+from socketmock.plugins.sftp.stubs import request_matches
+from socketmock.plugins.smpp.stubs import next_seq, pdu_matches
+from socketmock.server import ProtocolServer, SocketMockServer
 
 
 class FakeSession(ProtocolSession):

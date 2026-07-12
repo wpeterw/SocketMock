@@ -13,6 +13,6 @@ type:
 	uv run ty check .
 
 test:
-	uv run pytest --cov=SocketMock --cov-report=term-missing
+	uv run pytest --cov=socketmock --cov-report=term-missing
 
 check: format lint type test

@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from SocketMock.plugins.sftp import codec as sftp_codec
+from socketmock.plugins.sftp import codec as sftp_codec
 
 
 def test_sftp_codec_helpers(tmp_path: Path) -> None:

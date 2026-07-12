@@ -1,7 +1,3 @@
-
-import asyncio
-
-
 class FakeWriter:
     def __init__(self) -> None:
         self.writes: list[bytes] = []

@@ -2,9 +2,9 @@ import asyncio
 from pathlib import Path
 from typing import cast
 
-from SocketMock.plugins.sftp import codec as sftp_codec
-from SocketMock.plugins.sftp.session import SFTPSession
-from SocketMock.plugins.sftp.stubs import StubStore
+from socketmock.plugins.sftp import codec as sftp_codec
+from socketmock.plugins.sftp.session import SFTPSession
+from socketmock.plugins.sftp.stubs import StubStore
 from tests.plugins._helpers import FakeWriter
 
 
@@ -19,7 +19,9 @@ def test_sftp_session_handles_file_and_directory_ops(tmp_path: Path) -> None:
 
         reader = asyncio.StreamReader()
         writer = FakeWriter()
-        session = SFTPSession(reader, cast(asyncio.StreamWriter, writer), StubStore(), {"root": str(tmp_path)})
+        session = SFTPSession(
+            reader, cast(asyncio.StreamWriter, writer), StubStore(), {"root": str(tmp_path)}
+        )
 
         open_payload = (
             sftp_codec.pack_string("/data.txt")
@@ -30,9 +32,7 @@ def test_sftp_session_handles_file_and_directory_ops(tmp_path: Path) -> None:
         file_handle = next(iter(session._handles))
 
         read_payload = (
-            sftp_codec.pack_bytes(file_handle)
-            + sftp_codec.pack_u64(0)
-            + sftp_codec.pack_u32(5)
+            sftp_codec.pack_bytes(file_handle) + sftp_codec.pack_u64(0) + sftp_codec.pack_u32(5)
         )
         await session._handle_read(2, read_payload)
 
@@ -80,7 +80,12 @@ def test_sftp_session_uses_stubbed_responses(tmp_path: Path) -> None:
             }
         )
         writer = FakeWriter()
-        session = SFTPSession(asyncio.StreamReader(), cast(asyncio.StreamWriter, writer), store, {"root": str(tmp_path)})
+        session = SFTPSession(
+            asyncio.StreamReader(),
+            cast(asyncio.StreamWriter, writer),
+            store,
+            {"root": str(tmp_path)},
+        )
         payload = (
             sftp_codec.pack_string("/blocked.txt")
             + sftp_codec.pack_u32(1)
@@ -100,7 +105,9 @@ def test_sftp_session_run_processes_packets(tmp_path: Path) -> None:
     async def run_test() -> None:
         reader = asyncio.StreamReader()
         writer = FakeWriter()
-        session = SFTPSession(reader, cast(asyncio.StreamWriter, writer), StubStore(), {"root": str(tmp_path)})
+        session = SFTPSession(
+            reader, cast(asyncio.StreamWriter, writer), StubStore(), {"root": str(tmp_path)}
+        )
         reader.feed_data(sftp_codec.encode_packet(sftp_codec.SSH_FXP_INIT, sftp_codec.pack_u32(3)))
         reader.feed_eof()
         await session.run()

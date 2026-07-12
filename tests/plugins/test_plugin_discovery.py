@@ -1,4 +1,4 @@
-from SocketMock.plugins.base import ProtocolRegistry
+from socketmock.plugins.base import ProtocolRegistry
 
 
 def test_protocol_registry_discovers_builtin_plugins() -> None:

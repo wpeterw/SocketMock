@@ -1,0 +1,55 @@
+from ..base import ProtocolRegistry
+from .codec import (
+    CMD,
+    CMD_NAME,
+    ESME_RALYBND,
+    ESME_RINVBNDSTS,
+    ESME_RINVCMDID,
+    ESME_RINVCMDLEN,
+    ESME_RINVDSTADR,
+    ESME_RINVMSGLEN,
+    ESME_RINVPASWD,
+    ESME_RINVSRCADR,
+    ESME_RINVSYSID,
+    ESME_RMSGQFUL,
+    ESME_ROK,
+    ESME_RSYSERR,
+    ESME_RTHROTTLED,
+    PDU,
+    PDUParseError,
+    decode_pdu,
+    encode_pdu,
+    try_extract_one,
+)
+from .plugin import SMPPPlugin
+from .stubs import StubMapping, StubStore, next_seq, pdu_matches
+
+ProtocolRegistry.register(SMPPPlugin)
+
+__all__ = [
+    "CMD",
+    "CMD_NAME",
+    "ESME_RALYBND",
+    "ESME_RINVBNDSTS",
+    "ESME_RINVCMDID",
+    "ESME_RINVCMDLEN",
+    "ESME_RINVMSGLEN",
+    "ESME_RINVPASWD",
+    "ESME_RINVSRCADR",
+    "ESME_RINVDSTADR",
+    "ESME_RINVSYSID",
+    "ESME_RMSGQFUL",
+    "ESME_ROK",
+    "ESME_RSYSERR",
+    "ESME_RTHROTTLED",
+    "PDU",
+    "PDUParseError",
+    "SMPPPlugin",
+    "StubMapping",
+    "StubStore",
+    "decode_pdu",
+    "encode_pdu",
+    "next_seq",
+    "pdu_matches",
+    "try_extract_one",
+]

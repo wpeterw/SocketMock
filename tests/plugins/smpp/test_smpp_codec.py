@@ -1,6 +1,6 @@
 import pytest
 
-from SocketMock.plugins.smpp import codec as smpp_codec
+from socketmock.plugins.smpp import codec as smpp_codec
 
 
 def test_smpp_codec_round_trip_and_extract() -> None:

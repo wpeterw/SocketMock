@@ -1,7 +1,7 @@
   # SocketMock
 
   ![CI](https://github.com/wpeterw/SocketMock/actions/workflows/quality.yml/badge.svg)
-  ![Coverage](https://img.shields.io/badge/coverage-20%25-red)
+  ![Coverage](https://img.shields.io/badge/coverage-80%25-brightgreen)
   ![Gitleaks](https://github.com/wpeterw/SocketMock/actions/workflows/gitleaks.yml/badge.svg)
   ![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)
 
@@ -12,7 +12,7 @@
 
   The core runtime is plugin-based: built-in plugins such as `smpp` and `sftp`
   implement protocol behavior, while new plugins can be added by creating a new
-  package under `SocketMock/plugins/<protocol>/`. The registry discovers plugin
+  package under `socketmock/plugins/<protocol>/`. The registry discovers plugin
   packages automatically, so contributors do not need to edit a central registry
   file when they add a new protocol.
 
@@ -39,19 +39,19 @@
 
   ```bash
   uv sync --group dev
-  uv run python -m SocketMock.app --port 2775 --admin-port 8080
+  uv run python -m socketmock.app --port 2775 --admin-port 8080
   ```
 
   Optional authentication:
 
   ```bash
-  uv run python -m SocketMock.app --credential loadtest:secret --credential otheruser:pw2
+  uv run python -m socketmock.app --credential loadtest:secret --credential otheruser:pw2
   ```
 
   Use a specific plugin when you add one:
 
   ```bash
-  uv run python -m SocketMock.app --protocol smpp --port 2775 --admin-port 8080
+  uv run python -m socketmock.app --protocol smpp --port 2775 --admin-port 8080
   ```
 
   ## Concepts
@@ -61,7 +61,7 @@
   - **Admin port** (default 8080): JSON REST API under `/__admin` for mappings,
     request history, and reset operations.
   - **Protocol awareness**: the admin API is not a separate plugin registry. When
-    the app starts, `SocketMock/app.py` resolves the selected `--protocol`, creates
+    the app starts, `socketmock/app.py` resolves the selected `--protocol`, creates
     that plugin and its store, and then wires the admin app to that active plugin.
     The routes are generic, but the current protocol name/description and the active
     session store come from the plugin chosen at startup.
@@ -70,10 +70,10 @@
 
   ## Adding a new protocol
 
-  The easiest path is to copy the starter template in `SocketMock/plugins/_template/`
+  The easiest path is to copy the starter template in `socketmock/plugins/_template/`
   and adapt it to your protocol:
 
-  1. Create a new directory under `SocketMock/plugins/<protocol>/`.
+  1. Create a new directory under `socketmock/plugins/<protocol>/`.
   2. Implement a `ProtocolPlugin` subclass in `plugin.py` and a `ProtocolSession`
      subclass in `session.py`.
   3. Add a `stubs.py` module if you need protocol-specific matching; otherwise the
@@ -137,11 +137,11 @@
 
   ## Files
 
-  - `SocketMock/plugins/` — protocol plugin packages and registry
-  - `SocketMock/server.py` — asyncio TCP server core
-  - `SocketMock/admin.py` — aiohttp admin REST API
-  - `SocketMock/app.py` — CLI entry point wiring both servers together
-  - `SocketMock/static/` — the dashboard (`index.html`, `app.css`, `app.js`), served by the admin app
+  - `socketmock/plugins/` — protocol plugin packages and registry
+  - `socketmock.server.py` — asyncio TCP server core
+  - `socketmock.admin.py` — aiohttp admin REST API
+  - `socketmock/app.py` — CLI entry point wiring both servers together
+  - `socketmock/static/` — the dashboard (`index.html`, `app.css`, `app.js`), served by the admin app
   - `Dockerfile`, `docker-compose.yml`, `.dockerignore` — containerized run
 
   ## Development
@@ -151,7 +151,7 @@
   uv run ruff check .
   uv run ruff format .
   uv run ty check .
-  uv run pytest --cov=SocketMock --cov-report=term-missing
+  uv run pytest --cov=socketmock --cov-report=term-missing
   ```
 
   The GitHub Actions workflow runs the same checks automatically on pushes and pull requests.

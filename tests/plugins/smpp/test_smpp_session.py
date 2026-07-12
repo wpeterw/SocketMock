@@ -1,9 +1,9 @@
 import asyncio
 from typing import cast
 
-from SocketMock.plugins.smpp import codec as smpp_codec
-from SocketMock.plugins.smpp.session import SMPPSession
-from SocketMock.plugins.smpp.stubs import StubStore
+from socketmock.plugins.smpp import codec as smpp_codec
+from socketmock.plugins.smpp.session import SMPPSession
+from socketmock.plugins.smpp.stubs import StubStore
 from tests.plugins._helpers import FakeWriter
 
 

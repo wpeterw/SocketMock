@@ -1,5 +1,5 @@
-from SocketMock.plugins.sftp import SFTPPlugin
-from SocketMock.plugins.sftp.stubs import StubStore
+from socketmock.plugins.sftp import SFTPPlugin
+from socketmock.plugins.sftp.stubs import StubStore
 
 
 def test_sftp_plugin_defaults() -> None:
