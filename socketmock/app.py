@@ -83,7 +83,7 @@ async def main() -> None:
     await runner.setup()
     site = web.TCPSite(runner, args.admin_host, args.admin_port)
     await site.start()
-    logging.getLogger("SocketMock").info(
+    logging.getLogger("socketmock").info(
         "Admin API listening on http://%s:%s/__admin", args.admin_host, args.admin_port
     )
 
