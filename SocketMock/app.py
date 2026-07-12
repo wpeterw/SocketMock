@@ -13,23 +13,28 @@ from aiohttp import web
 
 from .admin import make_admin_app
 from .plugins import ProtocolRegistry
-from .plugins.socketmock import StubStore
 from .server import ProtocolServer
 
 
 def parse_args() -> argparse.Namespace:
+    available_protocols = ProtocolRegistry.available()
+    default_protocol = available_protocols[0] if available_protocols else "smpp"
     p = argparse.ArgumentParser(description="Protocol-agnostic mock simulator")
     p.add_argument(
         "--protocol",
-        default="socketmock",
-        choices=ProtocolRegistry.available(),
+        default=default_protocol,
+        choices=available_protocols,
         help="protocol plugin to run",
     )
     p.add_argument("--host", default="0.0.0.0", help="host for the protocol server")
     p.add_argument("--port", type=int, default=2775, help="port for the protocol server")
     p.add_argument("--admin-host", default="0.0.0.0")
     p.add_argument("--admin-port", type=int, default=8080)
-    p.add_argument("--system-id", default="socketmock", help="system_id reported in bind_resp")
+    p.add_argument(
+        "--system-id",
+        default="socketmock",
+        help="identifier reported by the selected protocol plugin",
+    )
     p.add_argument(
         "--require-auth",
         action="store_true",
@@ -61,12 +66,12 @@ async def main() -> None:
     elif args.require_auth:
         creds = {}
 
-    store = StubStore()
-    config: dict[str, Any] = {"system_id": args.system_id, "credentials": creds}
-
     plugin = ProtocolRegistry.get(args.protocol)
     if plugin is None:
         raise SystemExit(f"unknown protocol: {args.protocol}")
+
+    store = plugin.create_store()
+    config: dict[str, Any] = {"system_id": args.system_id, "credentials": creds}
 
     server = ProtocolServer(store, plugin=plugin, host=args.host, port=args.port, config=config)
     await server.start()

@@ -1,5 +1,5 @@
 """
-Admin REST API, deliberately shaped like Wiremock's /__admin surface.
+Admin REST API with a simple /__admin surface for managing mappings, requests, and sessions.
 """
 
 from __future__ import annotations
@@ -9,15 +9,17 @@ import time
 
 from aiohttp import web
 
-from .plugins.socketmock import StubStore
+from libs.stubs import StubStore
+
+from .plugins import ProtocolStubStore
 
 STATIC_DIR = pathlib.Path(__file__).parent / "static"
 
 
 def make_admin_app(
-    store: StubStore,
+    store: ProtocolStubStore,
     protocol_name: str = "socketmock",
-    protocol_description: str = "SocketMock",
+    protocol_description: str = "mock protocol service",
 ) -> web.Application:
     app = web.Application()
     app["store"] = store
@@ -55,7 +57,7 @@ async def health(request: web.Request) -> web.Response:
             "status": "ok",
             "time": time.time(),
             "protocol": request.app.get("protocol_name", "socketmock"),
-            "protocolDescription": request.app.get("protocol_description", "SocketMock"),
+            "protocolDescription": request.app.get("protocol_description", "mock protocol service"),
         }
     )
 

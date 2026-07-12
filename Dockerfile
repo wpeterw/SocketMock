@@ -8,7 +8,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY SocketMock ./SocketMock
 
-# 2775: SocketMock (binary protocol) -- point your ESME/client here
+# 2775: SocketMock protocol endpoint -- point your client here
 # 8080: admin REST API + dashboard -- open http://localhost:8080/ in a browser
 EXPOSE 2775 8080
 

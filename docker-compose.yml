@@ -4,7 +4,7 @@ services:
     image: socketmock:latest
     container_name: socketmock
     ports:
-      - "2775:2775"   # SocketMock: point your ESME/client at localhost:2775
+      - "2775:2775"   # SocketMock: point a client at localhost:2775
       - "8087:8080"   # admin API + dashboard: http://localhost:8080/
     restart: unless-stopped
     healthcheck:

@@ -1,186 +1,146 @@
-# SocketMock
+  # SocketMock
 
-![CI](https://github.com/wpeterw/SocketMock/actions/workflows/quality.yml/badge.svg)
-![Coverage](https://img.shields.io/badge/coverage-20%25-red)
+  ![CI](https://github.com/wpeterw/SocketMock/actions/workflows/quality.yml/badge.svg)
+  ![Coverage](https://img.shields.io/badge/coverage-20%25-red)
 
-SocketMock is a Wiremock-style simulator for non-HTTP protocols, with SMPP as the
-first protocol it can mock. It listens like a real service on a TCP port, but you
-drive its behavior through a REST admin API instead of hand-rolling test
-infrastructure — configure stub responses, watch a request journal, and trigger
-protocol-specific events on demand.
+  SocketMock is a protocol simulator for non-HTTP services. It listens on a TCP port
+  like a real service, but you drive its behavior through a REST admin API instead
+  of hand-rolling test infrastructure. Configure stub responses, watch a request
+  journal, and trigger protocol-specific events on demand.
 
-The core runtime is plugin-based: the built-in `socketmock` plugin implements the
-current SMPP-style behavior, while new plugins can be registered by implementing a
-small `ProtocolPlugin` interface and exposing it through the registry.
+  The core runtime is plugin-based: built-in plugins such as `smpp` and `sftp`
+  implement protocol behavior, while new plugins can be added by creating a new
+  package under `SocketMock/plugins/<protocol>/`. The registry discovers plugin
+  packages automatically, so contributors do not need to edit a central registry
+  file when they add a new protocol.
 
-## Run it with Docker
+  ## Run it with Docker
 
-```bash
-docker compose up --build
-```
-Then point your SocketMock client at `localhost:2775` and open the dashboard at
-`http://localhost:8080/`. Stub mappings and the request journal live in memory,
-so they reset whenever the container restarts.
+  ```bash
+  docker compose up --build
+  ```
+  Then point a client at `localhost:2775` and open the dashboard at
+  `http://localhost:8080/`. Stub mappings and the request journal live in memory,
+  so they reset whenever the container restarts.
 
-To require bind auth or change flags, uncomment and edit the `command:` block
-in `docker-compose.yml`, e.g.:
-```yaml
-command: >
-  --host 0.0.0.0 --port 2775
-  --admin-host 0.0.0.0 --admin-port 8080
-  --credential loadtest:secret
-```
+  To require authentication or change flags, adjust the `command:` block in
+  `docker-compose.yml`, for example:
 
-## Run it without Docker
+  ```yaml
+  command: >
+    --host 0.0.0.0 --port 2775
+    --admin-host 0.0.0.0 --admin-port 8080
+    --credential loadtest:secret
+  ```
 
-```bash
-pip install -r requirements.txt
-python -m SocketMock.app --port 2775 --admin-port 8080
-```
-Optional bind auth:
-```bash
-python -m SocketMock.app --credential loadtest:secret --credential otheruser:pw2
-```
-If `--credential` is never given, any `system_id`/`password` is accepted (the default,
-convenient for local dev).
+  ## Run it without Docker
 
-Use a different plugin when you add one:
-```bash
-python -m SocketMock.app --protocol socketmock --port 2775 --admin-port 8080
-```
+  ```bash
+  uv sync --group dev
+  uv run python -m SocketMock.app --port 2775 --admin-port 8080
+  ```
 
-## Concepts
+  Optional authentication:
 
-- **Protocol plugin**: a small adapter that knows how to turn a TCP connection into
-  a mock session for a protocol. The built-in `socketmock` plugin covers the current
-  SMPP behavior.
-  - **SocketMock port** (default 2775): the built-in SMPP service, TCP, binary PDUs. Point your
-  ESME/client at this like any SMSC.
-- **Admin port** (default 8080): JSON REST API under `/__admin`, same shape as
-  Wiremock's `/__admin` — mappings, requests journal, reset.
-- **Stub mapping**: a rule matching incoming PDUs (by command type and fields like
-  `sourceAddr`/`destinationAddr`/`shortMessage`) to a canned response, optionally
-  including an asynchronous delivery receipt.
-- Unmatched `submit_sm` traffic still gets a default `ESME_ROK` + random
-  `message_id` so a client isn't left hanging — it's just logged with
-  `matchedStubId: null` so you can tell it apart in the journal.
+  ```bash
+  uv run python -m SocketMock.app --credential loadtest:secret --credential otheruser:pw2
+  ```
 
-## Dashboard
+  Use a specific plugin when you add one:
 
-Open **http://localhost:8080/** (the admin port) for a live console: bound
-sessions on the left, a scrolling PDU trace in the middle (click any row for
-the full decoded PDU), and stub mappings on the right with a form to create
-new ones — no need to hand-write curl/JSON unless you want to. There's also a
-quick form to push an ad-hoc `deliver_sm` (MO or receipt) into any bound
-session. It's a thin client over the same `/__admin` API below, polling every
-1.2s, so anything you do via curl shows up there too.
+  ```bash
+  uv run python -m SocketMock.app --protocol smpp --port 2775 --admin-port 8080
+  ```
 
-## Admin API
+  ## Concepts
 
-| Method | Path                     | Purpose                                   |
-|--------|--------------------------|--------------------------------------------|
-| POST   | `/__admin/mappings`      | create a stub mapping                      |
-| GET    | `/__admin/mappings`      | list mappings                              |
-| GET    | `/__admin/mappings/{id}` | get one mapping                            |
-| DELETE | `/__admin/mappings/{id}` | delete one mapping                         |
-| DELETE | `/__admin/mappings`      | clear all mappings                         |
-| GET    | `/__admin/requests`      | request/response journal                   |
-| DELETE | `/__admin/requests`      | clear the journal                          |
-| POST   | `/__admin/reset`         | clear mappings + journal                   |
-| GET    | `/__admin/sessions`      | list currently bound SocketMock sessions         |
-| POST   | `/__admin/deliver`       | push an ad-hoc `deliver_sm` to a session   |
-| GET    | `/__admin/health`        | liveness check                             |
+  - **Protocol plugin**: a small adapter that knows how to turn a TCP connection into
+  a mock session for a protocol.
+  - **Admin port** (default 8080): JSON REST API under `/__admin` for mappings,
+    request history, and reset operations.
+  - **Stub mapping**: a rule that matches incoming requests to a canned response,
+    optionally including async follow-up behavior.
 
-### Create a stub
+  ## Adding a new protocol
 
-```bash
-curl -X POST http://localhost:8080/__admin/mappings -H 'Content-Type: application/json' -d '{
-  "priority": 1,
-  "request": {
-    "commandName": "submit_sm",
-    "shortMessage": {"contains": "PROMO"}
-  },
-  "response": {
-    "commandStatus": 0,
-    "messageId": "sim-{{randomId}}",
-    "delayMs": 50,
-    "deliveryReceipt": {
-      "enabled": true,
-      "delayMs": 2000,
-      "finalStatus": "DELIVRD"
+  The easiest path is to copy the starter template in `SocketMock/plugins/_template/`
+  and adapt it to your protocol:
+
+  1. Create a new directory under `SocketMock/plugins/<protocol>/`.
+  2. Implement a `ProtocolPlugin` subclass in `plugin.py` and a `ProtocolSession`
+     subclass in `session.py`.
+  3. Add a `stubs.py` module if you need protocol-specific matching; otherwise the
+     shared `libs/stubs` store is already available.
+  4. Put any wire-format helpers in `codec.py`.
+  5. Register the plugin from `__init__.py` using `ProtocolRegistry.register(...)`.
+
+  No central registry edit is required: `ProtocolRegistry.discover()` imports every
+  plugin package automatically, so `--protocol <protocol>` will work as soon as the
+  new package is present.
+
+  ## Dashboard
+
+  Open **http://localhost:8080/** (the admin port) for a live console: bound
+  sessions on the left, a scrolling traffic trace in the middle, and stub mappings
+  on the right with a form to create new ones. It is a thin client over the same
+  `/__admin` API, polling regularly so anything you do via curl shows up there too.
+
+  ## Admin API
+
+  | Method | Path                     | Purpose                                   |
+  |--------|--------------------------|--------------------------------------------|
+  | POST   | `/__admin/mappings`      | create a stub mapping                      |
+  | GET    | `/__admin/mappings`      | list mappings                              |
+  | GET    | `/__admin/mappings/{id}` | get one mapping                            |
+  | DELETE | `/__admin/mappings/{id}` | delete one mapping                         |
+  | DELETE | `/__admin/mappings`      | clear all mappings                         |
+  | GET    | `/__admin/requests`      | request/response journal                   |
+  | DELETE | `/__admin/requests`      | clear the journal                          |
+  | POST   | `/__admin/reset`         | clear mappings + journal                   |
+  | GET    | `/__admin/sessions`      | list currently bound SocketMock sessions   |
+  | POST   | `/__admin/deliver`       | push a protocol-specific event to a session |
+  | GET    | `/__admin/health`        | liveness check                             |
+
+  ### Create a stub
+
+  ```bash
+  curl -X POST http://localhost:8080/__admin/mappings -H 'Content-Type: application/json' -d '{
+    "priority": 1,
+    "request": {
+      "operation": "open",
+      "path": {"contains": "/tmp"}
+    },
+    "response": {
+      "statusCode": 0,
+      "message": "ok"
     }
-  }
-}'
-```
+  }'
+  ```
 
-Matchers on `sourceAddr`, `destinationAddr`, `shortMessage`, `serviceType`, `systemId`
-support: `equalTo`, `contains`, `regex` (alias `matches`), `absent`. Lower `priority`
-number wins when multiple stubs match, same as Wiremock.
+  ### Inspect traffic
 
-`finalStatus` accepts `DELIVRD`, `UNDELIV`, `EXPIRED`, `DELETED`, `ACCEPTD`, `REJECTD`, `UNKNOWN`.
+  ```bash
+  curl http://localhost:8080/__admin/requests
+  ```
 
-### Simulate an error response (e.g. throttling)
+  ## Files
 
-```bash
-curl -X POST http://localhost:8080/__admin/mappings -H 'Content-Type: application/json' -d '{
-  "request": {"commandName": "submit_sm", "destinationAddr": {"contains": "999"}},
-  "response": {"commandStatus": 88}
-}'
-```
-(`88` = `ESME_RTHROTTLED`; use whichever SocketMock status code you need to reproduce.)
+  - `SocketMock/plugins/` — protocol plugin packages and registry
+  - `SocketMock/server.py` — asyncio TCP server core
+  - `SocketMock/admin.py` — aiohttp admin REST API
+  - `SocketMock/app.py` — CLI entry point wiring both servers together
+  - `SocketMock/static/` — the dashboard (`index.html`, `app.css`, `app.js`), served by the admin app
+  - `Dockerfile`, `docker-compose.yml`, `.dockerignore` — containerized run
 
-### Trigger an MO or delivery receipt manually
+  ## Development
 
-```bash
-curl -X POST http://localhost:8080/__admin/deliver -H 'Content-Type: application/json' -d '{
-  "sessionId": "sess-1",
-  "sourceAddr": "254700000000",
-  "destinationAddr": "447700900000",
-  "shortMessage": "Inbound test message"
-}'
-```
-Get `sessionId` from `GET /__admin/sessions`.
+  ```bash
+  uv sync --group dev
+  uv run ruff check .
+  uv run ruff format .
+  uv run ty check .
+  uv run pytest --cov=SocketMock --cov-report=term-missing
+  ```
 
-### Inspect traffic
-
-```bash
-curl http://localhost:8080/__admin/requests
-```
-Every inbound and outbound PDU is logged with a timestamp, session id, and
-(for `submit_sm_resp`) which stub matched.
-
-## What's implemented
-
-Core SocketMock v3.4 lifecycle: `bind_transmitter` / `bind_receiver` / `bind_transceiver`
-(+ resp), `submit_sm` (+ resp), `deliver_sm` (+ resp), `enquire_link` (+ resp),
-`unbind` (+ resp), `generic_nack`. TLVs on `submit_sm`/`deliver_sm` are parsed
-and preserved but not matched on by default.
-
-Not implemented: `submit_multi`, `query_sm`, `replace_sm`, `cancel_sm`,
-`data_sm`, `outbind`, TLS. These are straightforward to add in `pdu.py` and
-`server.py` following the existing patterns if you need them.
-
-## Files
-
-- `SocketMock/plugins/` — protocol plugin package (base interface + registry)
-- `SocketMock/plugins/socketmock/pdu.py` — PDU encode/decode for the built-in socketmock plugin
-- `SocketMock/plugins/socketmock/stubs.py` — stub matching engine + request journal + session registry for the built-in socketmock plugin
-- `SocketMock/server.py` — asyncio TCP server core + built-in SocketMock session state machine
-- `SocketMock/admin.py` — aiohttp admin REST API
-- `SocketMock/app.py` — CLI entry point wiring both servers together
-- `SocketMock/static/` — the dashboard (`index.html`, `app.css`, `app.js`), served by the admin app
-- `test_client.py` — example raw SocketMock client exercising bind/submit/receipt/unbind
-- `Dockerfile`, `docker-compose.yml`, `.dockerignore` — containerized run
-
-## Development
-
-```bash
-uv sync --group dev
-uv run ruff check .
-uv run ruff format .
-uv run ty check .
-uv run pytest --cov=SocketMock --cov-report=term-missing
-```
-
-The GitHub Actions workflow runs the same checks automatically on pushes and pull requests.
+  The GitHub Actions workflow runs the same checks automatically on pushes and pull requests.
 

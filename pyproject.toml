@@ -14,6 +14,15 @@ pythonpath = ["."]
 [tool.coverage.run]
 source = ["SocketMock"]
 branch = true
+omit = [
+    "SocketMock/admin.py",
+    "SocketMock/app.py",
+    "SocketMock/plugins/_template/*",
+    "SocketMock/examples/*",
+]
+
+[tool.coverage.report]
+fail_under = 80
 
 [tool.ruff]
 target-version = "py312"

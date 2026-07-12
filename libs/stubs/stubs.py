@@ -1,67 +1,72 @@
-"""
-Stub matching engine, modeled after Wiremock's mapping/journal concepts.
-"""
-
 from __future__ import annotations
 
 import builtins
-import itertools
 import re
 import threading
 import time
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any
-
-_seq_counter = itertools.count(1)
+from typing import Any, Protocol, runtime_checkable
 
 
-def next_seq() -> int:
-    return next(_seq_counter)
-
-
-def _match_one(matcher: dict[str, Any] | None, value: str | None) -> bool:
+def match_one(matcher: Any, value: Any) -> bool:
     if matcher is None:
         return True
-    if "absent" in matcher:
-        is_absent = value is None or value == ""
-        return is_absent == bool(matcher["absent"])
-    value = value or ""
-    if "equalTo" in matcher:
-        return value == matcher["equalTo"]
-    if "contains" in matcher:
-        return matcher["contains"] in value
-    if "regex" in matcher:
-        return re.search(matcher["regex"], value) is not None
-    if "matches" in matcher:
-        return re.search(matcher["matches"], value) is not None
+    if isinstance(matcher, dict):
+        if "absent" in matcher:
+            is_absent = value is None or value == ""
+            return is_absent == bool(matcher["absent"])
+        if "equalTo" in matcher:
+            return value == matcher["equalTo"]
+        if "contains" in matcher:
+            return str(matcher["contains"]) in str(value)
+        if "regex" in matcher:
+            return re.search(matcher["regex"], str(value)) is not None
+        if "matches" in matcher:
+            return re.search(matcher["matches"], str(value)) is not None
     return True
 
 
-FIELD_MAP: dict[str, str] = {
-    "sourceAddr": "source_addr",
-    "destinationAddr": "destination_addr",
-    "shortMessage": "short_message",
-    "serviceType": "service_type",
-    "systemId": "system_id",
-}
+@runtime_checkable
+class ProtocolStubMapping(Protocol):
+    id: str
+    priority: int
+    request: dict[str, Any]
+    response: dict[str, Any]
+
+    def to_dict(self) -> dict[str, Any]: ...
 
 
-def pdu_matches(stub_request: dict[str, Any], pdu: dict[str, Any]) -> bool:
-    cmd_name = stub_request.get("commandName")
-    if cmd_name and pdu.get("command_name") != cmd_name:
-        return False
+@runtime_checkable
+class ProtocolStubStore(Protocol):
+    def add(self, mapping: dict[str, Any]) -> ProtocolStubMapping: ...
 
-    for wm_field, pdu_field in FIELD_MAP.items():
-        if wm_field not in stub_request:
-            continue
-        raw_value = pdu.get(pdu_field)
-        if isinstance(raw_value, bytes):
-            raw_value = raw_value.decode("latin-1", errors="replace")
-        if not _match_one(stub_request[wm_field], raw_value):
-            return False
+    def list(self) -> builtins.list[dict[str, Any]]: ...
 
-    return True
+    def get(self, stub_id: str) -> dict[str, Any] | None: ...
+
+    def delete(self, stub_id: str) -> bool: ...
+
+    def reset_mappings(self) -> None: ...
+
+    def find_match(self, pdu: dict[str, Any]) -> ProtocolStubMapping | None: ...
+
+    def log_request(self, entry: dict[str, Any]) -> None: ...
+
+    def journal(self) -> builtins.list[dict[str, Any]]: ...
+
+    def reset_journal(self) -> None: ...
+
+    def reset_all(self) -> None: ...
+
+    def register_session(self, session_id: str, info: dict[str, Any]) -> None: ...
+
+    def unregister_session(self, session_id: str) -> None: ...
+
+    def list_sessions(self) -> builtins.list[dict[str, Any]]: ...
+
+    def get_session_handle(self, session_id: str) -> Any: ...
 
 
 @dataclass
@@ -83,13 +88,17 @@ class StubMapping:
 
 
 class StubStore:
-    """Thread-safe store of stub mappings + request journal, à la Wiremock."""
+    """Thread-safe store of stub mappings + request journal."""
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        matcher: Callable[[dict[str, Any], dict[str, Any]], bool] | None = None,
+    ) -> None:
         self._lock = threading.RLock()
         self._stubs: dict[str, StubMapping] = {}
         self._journal: list[dict[str, Any]] = []
         self._sessions: dict[str, dict[str, Any]] = {}
+        self._matcher = matcher or (lambda _request, _pdu: True)
 
     def add(self, mapping: dict[str, Any]) -> StubMapping:
         mid = mapping.get("id") or str(uuid.uuid4())
@@ -105,7 +114,10 @@ class StubStore:
 
     def list(self) -> builtins.list[dict[str, Any]]:
         with self._lock:
-            return [s.to_dict() for s in sorted(self._stubs.values(), key=lambda s: s.priority)]
+            return [
+                s.to_dict()
+                for s in sorted(self._stubs.values(), key=lambda s: s.priority, reverse=True)
+            ]
 
     def get(self, stub_id: str) -> dict[str, Any] | None:
         with self._lock:
@@ -122,9 +134,9 @@ class StubStore:
 
     def find_match(self, pdu: dict[str, Any]) -> StubMapping | None:
         with self._lock:
-            candidates = sorted(self._stubs.values(), key=lambda s: s.priority)
+            candidates = sorted(self._stubs.values(), key=lambda s: s.priority, reverse=True)
         for stub in candidates:
-            if pdu_matches(stub.request, pdu):
+            if self._matcher(stub.request, pdu):
                 return stub
         return None
 
@@ -157,7 +169,7 @@ class StubStore:
 
     def list_sessions(self) -> builtins.list[dict[str, Any]]:
         with self._lock:
-            out: builtins.list[dict[str, Any]] = []
+            out: list[dict[str, Any]] = []
             for info in self._sessions.values():
                 row = {k: v for k, v in info.items() if k != "handle"}
                 row.setdefault("bound", False)

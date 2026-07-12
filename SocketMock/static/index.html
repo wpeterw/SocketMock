@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>socketmock console</title>
+<title>SocketMock console</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -15,7 +15,7 @@
   <div class="brand">
     <span class="brand-dot" id="healthDot"></span>
     <span class="brand-name">socket<span class="brand-accent">mock</span></span>
-    <span class="brand-tag">wire console</span>
+    <span class="brand-tag">protocol console</span>
   </div>
 
   <canvas id="pulseStrip" class="pulse-strip" height="40"></canvas>
@@ -31,7 +31,7 @@
     </div>
     <div class="stat">
       <span class="stat-value" id="statRequests">0</span>
-      <span class="stat-label">PDUs</span>
+      <span class="stat-label">events</span>
     </div>
   </div>
 </header>
@@ -45,13 +45,13 @@
       <span class="pane-sub">bound connections</span>
     </div>
     <div id="sessionList" class="session-list">
-      <div class="empty-state">No ESME connected yet. Point a client at the SocketMock port.</div>
+      <div class="empty-state">No sessions connected yet. Point a client at the SocketMock port.</div>
     </div>
 
     <div class="deliver-box">
       <div class="pane-head">
-        <h3>Push to session</h3>
-        <span class="pane-sub">manual MO / receipt</span>
+        <h3>Send to session</h3>
+        <span class="pane-sub">manual outbound event</span>
       </div>
       <form id="deliverForm">
         <label>Session
@@ -65,10 +65,10 @@
             <input id="dDest" placeholder="447700900000" required>
           </label>
         </div>
-        <label>Text
+        <label>Payload
           <input id="dText" placeholder="Inbound test message" required>
         </label>
-        <button type="submit" class="btn btn-primary">Send deliver_sm</button>
+        <button type="submit" class="btn btn-primary">Send event</button>
       </form>
       <div id="deliverStatus" class="form-status"></div>
     </div>
@@ -78,7 +78,7 @@
   <section class="pane pane-trace">
     <div class="pane-head">
       <h2>Trace</h2>
-      <span class="pane-sub">live PDU feed</span>
+      <span class="pane-sub">live traffic feed</span>
       <div class="pane-actions">
         <label class="toggle">
           <input type="checkbox" id="autoScroll" checked> autoscroll
@@ -192,7 +192,7 @@
 <div id="pduModal" class="modal-overlay hidden">
   <div class="modal modal-wide">
     <div class="modal-head">
-      <h3>PDU detail</h3>
+      <h3>Event detail</h3>
       <button id="closePduModal" class="btn btn-ghost btn-sm" aria-label="Close">&times;</button>
     </div>
     <pre id="pduDetail" class="pdu-detail"></pre>

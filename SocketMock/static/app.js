@@ -1,7 +1,7 @@
 const API = "/__admin";
 
 // ---------------------------------------------------------------------
-// Pulse strip: a logic-analyzer style waveform that spikes on each PDU
+// Pulse strip: a logic-analyzer style waveform that spikes on each request
 // ---------------------------------------------------------------------
 const pulseCanvas = document.getElementById("pulseStrip");
 const pulseCtx = pulseCanvas.getContext("2d");
@@ -119,7 +119,7 @@ function renderSessions(sessions) {
 
   const list = document.getElementById("sessionList");
   if (sessions.length === 0) {
-    list.innerHTML = `<div class="empty-state">No ESME connected yet. Point a client at the SocketMock port.</div>`;
+    list.innerHTML = `<div class="empty-state">No sessions connected yet. Point a client at the SocketMock port.</div>`;
   } else {
     // Sort bound sessions first, then recent unbound sessions by lastSeen desc
     sessions.sort((a,b) => {

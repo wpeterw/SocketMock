@@ -3,7 +3,7 @@ import sys
 from typing import Any
 
 sys.path.insert(0, ".")
-from SocketMock import pdu as pdumod
+from SocketMock.plugins.smpp import codec as pdumod
 
 
 async def main() -> None:
