@@ -3,13 +3,14 @@
 ![CI](https://github.com/wpeterw/SocketMock/actions/workflows/quality.yml/badge.svg)
 ![Coverage](https://img.shields.io/badge/coverage-20%25-red)
 
-A Wiremock-style simulator for non-HTTP protocols, starting with SocketMock (v3.4).
-It listens like a real service on a TCP port, but you drive its behavior through
-a REST admin API instead of hand-rolling test infrastructure — configure stub
-responses, watch a request journal, and trigger protocol-specific events on demand.
+SocketMock is a Wiremock-style simulator for non-HTTP protocols, with SMPP as the
+first protocol it can mock. It listens like a real service on a TCP port, but you
+drive its behavior through a REST admin API instead of hand-rolling test
+infrastructure — configure stub responses, watch a request journal, and trigger
+protocol-specific events on demand.
 
-The core runtime is now protocol-plugin based: the built-in `socketmock` plugin keeps
-all current SocketMock behavior, while new plugins can be registered by implementing a
+The core runtime is plugin-based: the built-in `socketmock` plugin implements the
+current SMPP-style behavior, while new plugins can be registered by implementing a
 small `ProtocolPlugin` interface and exposing it through the registry.
 
 ## Run it with Docker
@@ -52,8 +53,8 @@ python -m SocketMock.app --protocol socketmock --port 2775 --admin-port 8080
 
 - **Protocol plugin**: a small adapter that knows how to turn a TCP connection into
   a mock session for a protocol. The built-in `socketmock` plugin covers the current
-  behavior.
-- **SocketMock port** (default 2775): real SocketMock protocol, TCP, binary PDUs. Point your
+  SMPP behavior.
+  - **SocketMock port** (default 2775): the built-in SMPP service, TCP, binary PDUs. Point your
   ESME/client at this like any SMSC.
 - **Admin port** (default 8080): JSON REST API under `/__admin`, same shape as
   Wiremock's `/__admin` — mappings, requests journal, reset.
