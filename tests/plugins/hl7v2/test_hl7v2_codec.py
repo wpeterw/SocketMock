@@ -12,3 +12,8 @@ def test_hl7v2_codec_helpers() -> None:
 
     ack = encode_ack(decoded)
     assert b"MSA|AA|12345" in ack
+
+
+def test_hl7v2_decode_message_returns_none_for_empty_payload() -> None:
+    assert decode_message(b"") is None
+    assert decode_message(b"\x0b\x1c\r") is None
