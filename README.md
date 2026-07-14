@@ -1,7 +1,7 @@
   # SocketMock
 
   ![CI](https://github.com/wpeterw/SocketMock/actions/workflows/quality.yml/badge.svg)
-  ![Coverage](https://img.shields.io/badge/coverage-80%25-brightgreen)
+  ![Coverage](./.github/badges/coverage.svg)
   ![Gitleaks](https://github.com/wpeterw/SocketMock/actions/workflows/gitleaks.yml/badge.svg)
   ![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)
 
