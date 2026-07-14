@@ -27,3 +27,28 @@ def test_imap_session_handles_login_list_fetch_and_logout() -> None:
         assert any(b"first message" in payload for payload in writer.writes)
 
     asyncio.run(run_test())
+
+
+def test_imap_session_covers_more_commands() -> None:
+    async def run_test() -> None:
+        writer = FakeWriter()
+        session = IMAPServerSession(
+            asyncio.StreamReader(), cast(asyncio.StreamWriter, writer), StubStore(), {}
+        )
+
+        await session._handle_command("A001 FETCH 1 BODY[TEXT]")
+        await session._handle_command("")
+        await session._handle_command("A001 LOGIN user password")
+        await session._handle_command("A002 CAPABILITY")
+        await session._handle_command('A003 LIST "" *')
+        await session._handle_command("A004 SELECT INBOX")
+        await session._handle_command("A005 FETCH 1 BODY[TEXT]")
+        await session._handle_command("A006 EXPUNGE")
+        await session._handle_command("A007 CLOSE")
+        await session._handle_command("A008 NOOP")
+        await session._handle_command("A009 LOGOUT")
+        await session._handle_command("A010 BOGUS")
+
+        assert writer.writes
+
+    asyncio.run(run_test())
