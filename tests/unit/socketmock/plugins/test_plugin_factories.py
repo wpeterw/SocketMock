@@ -21,7 +21,7 @@ from socketmock.plugins.smtp.plugin import SMTPPlugin
 from socketmock.plugins.smtp.session import SMTPServerSession
 from socketmock.plugins.x12.plugin import X12Plugin
 from socketmock.plugins.x12.session import X12Session
-from tests.plugins._helpers import FakeWriter
+from tests.unit.socketmock.plugins._helpers import FakeWriter
 
 
 class DummySession(ProtocolSession):

@@ -212,6 +212,15 @@ wheels = [
 ]
 
 [[package]]
+name = "defusedxml"
+version = "0.7.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/0f/d5/c66da9b79e5bdb124974bfe172b4daf3c984ebd9c2a06e2b8a4dc7331c72/defusedxml-0.7.1.tar.gz", hash = "sha256:1bb3032db185915b62d7c6209c5a8792be6a32ab2fedacc84e01b52c51aa3e69", size = 75520, upload-time = "2021-03-08T10:59:26.269Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/07/6c/aa3f2f849e01cb6a001cd8554a88d4c77c5c1a31c95bdf1cf9301e6d9ef4/defusedxml-0.7.1-py2.py3-none-any.whl", hash = "sha256:a352e7e428770286cc899e2542b6cdaedb2b4953ff269a210103ec58f6198a61", size = 25604, upload-time = "2021-03-08T10:59:24.45Z" },
+]
+
+[[package]]
 name = "frozenlist"
 version = "1.8.0"
 source = { registry = "https://pypi.org/simple" }
@@ -301,6 +310,15 @@ wheels = [
 ]
 
 [[package]]
+name = "hl7apy"
+version = "1.3.5"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/eb/68/c200fbbdb320703046af1be1b9da6b9ff2e596e5081393180d25fa04b294/hl7apy-1.3.5.tar.gz", hash = "sha256:4ed02ae574ddcf9084b389bfcaf1e9023c4b2f4dfa2ce4ab42c430c4180a03fe", size = 959807, upload-time = "2024-03-13T11:34:28.128Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/91/f7/1150f6d878a05272858a9a2dedd5466e06003a02dd7c555b51f299656178/hl7apy-1.3.5-py2.py3-none-any.whl", hash = "sha256:c8b80ff5ad020bf9c1e68a6395cf45cb78db621f65569d1798c46eb1b657e27b", size = 974708, upload-time = "2024-03-13T11:34:16.213Z" },
+]
+
+[[package]]
 name = "idna"
 version = "3.18"
 source = { registry = "https://pypi.org/simple" }
@@ -317,6 +335,12 @@ sdist = { url = "https://files.pythonhosted.org/packages/72/34/14ca021ce8e5dfedc
 wheels = [
     { url = "https://files.pythonhosted.org/packages/cb/b1/3846dd7f199d53cb17f49cba7e651e9ce294d8497c8c150530ed11865bb8/iniconfig-2.3.0-py3-none-any.whl", hash = "sha256:f631c04d2c48c52b84d0d0549c99ff3859c98df65b3101406327ecc7d53fbf12", size = 7484, upload-time = "2025-10-18T21:55:41.639Z" },
 ]
+
+[[package]]
+name = "iso8583"
+version = "1.4"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/87/01/bc66775cb0f0d9116001c2e4d25572fb4999031fd075597fc61570fa631d/ISO8583-1.4.tar.gz", hash = "sha256:d8858090720e0d37ef8d11ef5120ab902ed365099e582eee40f7dc793af917dd", size = 27388, upload-time = "2018-12-07T08:20:32.859Z" }
 
 [[package]]
 name = "multidict"
@@ -569,6 +593,18 @@ wheels = [
 ]
 
 [[package]]
+name = "pyx12"
+version = "4.0.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "defusedxml" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/1b/7f/5faae65f7b41a1ab1d26fc8753a24635f0961609eb48ac1eab9d9a169497/pyx12-4.0.0.tar.gz", hash = "sha256:d45c572e19971f7f67d65227bc7da158b01179ece2947a7038412dd935c59660", size = 540895, upload-time = "2026-05-05T22:34:08.73Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/84/6a/f8c18811c912f2a287f684f731a1031a24490f6d780e95ee17e5d601baf7/pyx12-4.0.0-py3-none-any.whl", hash = "sha256:8e983b5a3a76a307bea3be9203fb32f0ea1580e13cb66ed60d8b028dc015d1cc", size = 633962, upload-time = "2026-05-05T22:34:06.808Z" },
+]
+
+[[package]]
 name = "ruff"
 version = "0.15.21"
 source = { registry = "https://pypi.org/simple" }
@@ -594,6 +630,27 @@ wheels = [
 ]
 
 [[package]]
+name = "six"
+version = "1.17.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/94/e7/b2c673351809dca68a0e064b6af791aa332cf192da575fd474ed7d6f16a2/six-1.17.0.tar.gz", hash = "sha256:ff70335d468e7eb6ec65b95b99d3a2836546063f63acc5171de367e834932a81", size = 34031, upload-time = "2024-12-04T17:35:28.174Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b7/ce/149a00dd41f10bc29e5921b496af8b574d8413afcd5e30dfa0ed46c2cc5e/six-1.17.0-py2.py3-none-any.whl", hash = "sha256:4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274", size = 11050, upload-time = "2024-12-04T17:35:26.475Z" },
+]
+
+[[package]]
+name = "smpplib"
+version = "2.2.4"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "six" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/60/11/504bf0fe673e88f737fa6c20874b4307d36e481837034653de4fd9fff7d7/smpplib-2.2.4.tar.gz", hash = "sha256:6f3b036fcb2643c1b7a3289bb5ac4c9a720af1bf73e572e2729db6b5d800c273", size = 25032, upload-time = "2025-01-17T17:41:16.27Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/25/f4/d5741b2a6f69982e874c34862374958b7c8b0627c94f56e7dee977696171/smpplib-2.2.4-py3-none-any.whl", hash = "sha256:0fab94702f0a70500d654e8df69933465728770e75838ecceef0314b4442d0c2", size = 28923, upload-time = "2025-01-17T17:41:13.675Z" },
+]
+
+[[package]]
 name = "socketmock"
 version = "0.1.0"
 source = { virtual = "." }
@@ -603,9 +660,13 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "hl7apy" },
+    { name = "iso8583" },
     { name = "pytest" },
     { name = "pytest-cov" },
+    { name = "pyx12" },
     { name = "ruff" },
+    { name = "smpplib" },
     { name = "ty" },
 ]
 
@@ -614,9 +675,13 @@ requires-dist = [{ name = "aiohttp", specifier = ">=3.9" }]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "hl7apy", specifier = ">=1.3.5" },
+    { name = "iso8583", specifier = ">=1.4" },
     { name = "pytest", specifier = ">=8.0" },
     { name = "pytest-cov", specifier = ">=5.0" },
+    { name = "pyx12", specifier = ">=4.0.0" },
     { name = "ruff" },
+    { name = "smpplib", specifier = ">=2.2.4" },
     { name = "ty", specifier = ">=0.0.58" },
 ]
 

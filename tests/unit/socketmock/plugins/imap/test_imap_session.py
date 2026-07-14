@@ -3,7 +3,7 @@ from typing import cast
 
 from libs.stubs import StubStore
 from socketmock.plugins.imap.session import IMAPServerSession
-from tests.plugins._helpers import FakeWriter
+from tests.unit.socketmock.plugins._helpers import FakeWriter
 
 
 def test_imap_session_handles_login_list_fetch_and_logout() -> None:

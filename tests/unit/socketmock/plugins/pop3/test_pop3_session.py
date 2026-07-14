@@ -3,7 +3,7 @@ from typing import cast
 
 from libs.stubs import StubStore
 from socketmock.plugins.pop3.session import POP3ServerSession
-from tests.plugins._helpers import FakeWriter
+from tests.unit.socketmock.plugins._helpers import FakeWriter
 
 
 def test_pop3_session_handles_auth_and_stat() -> None:

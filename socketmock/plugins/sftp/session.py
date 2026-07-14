@@ -17,6 +17,9 @@ from . import codec as sftp_codec
 class OpenHandle:
     path: Path
     fileobj: Any
+    kind: str = "file"
+    dir_entries: list[tuple[str, str, bytes]] | None = None
+    dir_index: int = 0
 
 
 class SFTPSession(ProtocolSession):
@@ -91,10 +94,16 @@ class SFTPSession(ProtocolSession):
             await self._handle_stat(request_id, payload[offset:])
         elif packet_type == sftp_codec.SSH_FXP_LSTAT:
             await self._handle_lstat(request_id, payload[offset:])
+        elif packet_type == sftp_codec.SSH_FXP_FSTAT:
+            await self._handle_fstat(request_id, payload[offset:])
         elif packet_type == sftp_codec.SSH_FXP_SETSTAT:
             await self._handle_setstat(request_id, payload[offset:])
+        elif packet_type == sftp_codec.SSH_FXP_FSETSTAT:
+            await self._handle_fsetstat(request_id, payload[offset:])
         elif packet_type == sftp_codec.SSH_FXP_REMOVE:
             await self._handle_remove(request_id, payload[offset:])
+        elif packet_type == sftp_codec.SSH_FXP_RENAME:
+            await self._handle_rename(request_id, payload[offset:])
         elif packet_type == sftp_codec.SSH_FXP_MKDIR:
             await self._handle_mkdir(request_id, payload[offset:])
         elif packet_type == sftp_codec.SSH_FXP_RMDIR:
@@ -139,8 +148,14 @@ class SFTPSession(ProtocolSession):
                 "permission denied",
             )
             return
+        if pflags & sftp_codec.SSH_FXF_CREAT:
+            target.parent.mkdir(parents=True, exist_ok=True)
         flags = self._to_os_flags(pflags)
-        fileobj = open(target, flags)
+        try:
+            fileobj = open(target, flags)
+        except FileNotFoundError:
+            await self._send_status(request_id, sftp_codec.SSH_FX_NO_SUCH_FILE, "not found")
+            return
         handle_id = f"h{self._handle_counter}".encode("ascii")
         self._handle_counter += 1
         self._handles[handle_id] = OpenHandle(path=target, fileobj=fileobj)
@@ -240,7 +255,12 @@ class SFTPSession(ProtocolSession):
             return
         handle_id = f"d{self._handle_counter}".encode("ascii")
         self._handle_counter += 1
-        self._handles[handle_id] = OpenHandle(path=target, fileobj=iter(()))
+        self._handles[handle_id] = OpenHandle(
+            path=target,
+            fileobj=iter(()),
+            kind="dir",
+            dir_entries=self._build_directory_entries(target),
+        )
         await self._send_packet(
             sftp_codec.SSH_FXP_HANDLE, sftp_codec.encode_handle(request_id, handle_id)
         )
@@ -258,10 +278,17 @@ class SFTPSession(ProtocolSession):
         if entry is None:
             await self._send_status(request_id, sftp_codec.SSH_FX_FAILURE, "unknown handle")
             return
-        names = []
-        for child in sorted(entry.path.iterdir(), key=lambda item: item.name):
-            names.append((child.name, child.name, sftp_codec.encode_attrs(str(child))))
-        await self._send_packet(sftp_codec.SSH_FXP_NAME, sftp_codec.encode_name(request_id, names))
+        if entry.kind != "dir":
+            await self._send_status(request_id, sftp_codec.SSH_FX_FAILURE, "not a directory")
+            return
+        if entry.dir_entries is None:
+            entry.dir_entries = self._build_directory_entries(entry.path)
+        if entry.dir_index >= len(entry.dir_entries):
+            await self._send_status(request_id, sftp_codec.SSH_FX_EOF)
+            return
+        chunk = entry.dir_entries[entry.dir_index : entry.dir_index + 1]
+        entry.dir_index += 1
+        await self._send_packet(sftp_codec.SSH_FXP_NAME, sftp_codec.encode_name(request_id, chunk))
 
     async def _handle_stat(self, request_id: int, payload: bytes) -> None:
         path, _ = sftp_codec.unpack_string(payload)
@@ -297,10 +324,7 @@ class SFTPSession(ProtocolSession):
         if not target.exists():
             await self._send_status(request_id, sftp_codec.SSH_FX_NO_SUCH_FILE, "not found")
             return
-        if "permissions" in attrs:
-            os.chmod(target, attrs["permissions"])
-        if "mtime" in attrs:
-            os.utime(target, (attrs["mtime"], attrs["mtime"]))
+        self._apply_attrs(target, attrs)
         await self._send_status(request_id, sftp_codec.SSH_FX_OK)
 
     async def _handle_remove(self, request_id: int, payload: bytes) -> None:
@@ -318,6 +342,82 @@ class SFTPSession(ProtocolSession):
             await self._send_status(request_id, sftp_codec.SSH_FX_OK)
             return
         await self._send_status(request_id, sftp_codec.SSH_FX_NO_SUCH_FILE, "not found")
+
+    async def _handle_fstat(self, request_id: int, payload: bytes) -> None:
+        handle, _ = sftp_codec.unpack_bytes(payload)
+        request = {"operation": "fstat", "requestId": request_id, "handle": handle}
+        stub = self._find_stub(request)
+        if stub is not None:
+            self._log_request(request, stub)
+            if await self._maybe_respond_with_stub(request_id, stub):
+                return
+
+        entry = self._handles.get(handle)
+        if entry is None:
+            await self._send_status(request_id, sftp_codec.SSH_FX_FAILURE, "unknown handle")
+            return
+        await self._send_packet(
+            sftp_codec.SSH_FXP_ATTRS, self._encode_attrs_response(request_id, entry.path)
+        )
+
+    async def _handle_fsetstat(self, request_id: int, payload: bytes) -> None:
+        handle, offset = sftp_codec.unpack_bytes(payload)
+        attrs, _ = sftp_codec.decode_attrs(payload, offset)
+        request = {
+            "operation": "fsetstat",
+            "requestId": request_id,
+            "handle": handle,
+            "attrs": attrs,
+        }
+        stub = self._find_stub(request)
+        if stub is not None:
+            self._log_request(request, stub)
+            if await self._maybe_respond_with_stub(request_id, stub):
+                return
+
+        entry = self._handles.get(handle)
+        if entry is None:
+            await self._send_status(request_id, sftp_codec.SSH_FX_FAILURE, "unknown handle")
+            return
+        self._apply_attrs(entry.path, attrs)
+        await self._send_status(request_id, sftp_codec.SSH_FX_OK)
+
+    async def _handle_rename(self, request_id: int, payload: bytes) -> None:
+        old_path, offset = sftp_codec.unpack_string(payload)
+        new_path, offset = sftp_codec.unpack_string(payload, offset)
+        flags, _ = sftp_codec.unpack_u32(payload, offset)
+        request = {
+            "operation": "rename",
+            "requestId": request_id,
+            "oldPath": old_path,
+            "newPath": new_path,
+            "flags": flags,
+        }
+        stub = self._find_stub(request)
+        if stub is not None:
+            self._log_request(request, stub)
+            if await self._maybe_respond_with_stub(request_id, stub):
+                return
+
+        source = self._resolve(old_path)
+        destination = self._resolve(new_path)
+        if not source.exists():
+            await self._send_status(request_id, sftp_codec.SSH_FX_NO_SUCH_FILE, "not found")
+            return
+        if destination.exists() and not flags:
+            await self._send_status(request_id, sftp_codec.SSH_FX_FAILURE, "destination exists")
+            return
+        try:
+            if destination.exists():
+                if destination.is_dir() and not source.is_dir():
+                    destination.rmdir()
+                else:
+                    destination.unlink()
+            source.replace(destination)
+        except OSError as exc:
+            await self._send_status(request_id, sftp_codec.SSH_FX_FAILURE, str(exc))
+            return
+        await self._send_status(request_id, sftp_codec.SSH_FX_OK)
 
     async def _handle_mkdir(self, request_id: int, payload: bytes) -> None:
         path, _ = sftp_codec.unpack_string(payload)
@@ -376,6 +476,18 @@ class SFTPSession(ProtocolSession):
 
     def _encode_attrs_response(self, request_id: int, target: Path) -> bytes:
         return sftp_codec.pack_u32(request_id) + sftp_codec.encode_attrs(str(target))
+
+    def _build_directory_entries(self, directory: Path) -> list[tuple[str, str, bytes]]:
+        return [
+            (child.name, child.name, sftp_codec.encode_attrs(str(child)))
+            for child in sorted(directory.iterdir(), key=lambda item: item.name)
+        ]
+
+    def _apply_attrs(self, target: Path, attrs: dict[str, Any]) -> None:
+        if "permissions" in attrs:
+            os.chmod(target, attrs["permissions"])
+        if "mtime" in attrs:
+            os.utime(target, (attrs["mtime"], attrs["mtime"]))
 
     def _resolve(self, path: str) -> Path:
         target = Path(path)

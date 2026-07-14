@@ -4,7 +4,7 @@ from typing import cast
 from libs.stubs import StubStore
 from socketmock.plugins.hl7v2.codec import frame_message
 from socketmock.plugins.hl7v2.session import HL7V2Session
-from tests.plugins._helpers import FakeWriter
+from tests.unit.socketmock.plugins._helpers import FakeWriter
 
 
 def test_hl7v2_session_returns_ack_for_message() -> None:

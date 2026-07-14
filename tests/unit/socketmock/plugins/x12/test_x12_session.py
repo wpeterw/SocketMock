@@ -3,7 +3,7 @@ from typing import cast
 
 from libs.stubs import StubStore
 from socketmock.plugins.x12.session import X12Session
-from tests.plugins._helpers import FakeWriter
+from tests.unit.socketmock.plugins._helpers import FakeWriter
 
 
 def test_x12_session_returns_ack_for_message() -> None:

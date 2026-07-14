@@ -4,7 +4,7 @@ from typing import cast
 from libs.stubs import StubStore
 from socketmock.plugins.iso8583.codec import decode_message, encode_response
 from socketmock.plugins.iso8583.session import ISO8583Session
-from tests.plugins._helpers import FakeWriter
+from tests.unit.socketmock.plugins._helpers import FakeWriter
 
 
 def test_iso8583_session_returns_response_for_message() -> None:

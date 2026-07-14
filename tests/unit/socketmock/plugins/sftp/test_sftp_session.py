@@ -5,7 +5,7 @@ from typing import cast
 from socketmock.plugins.sftp import codec as sftp_codec
 from socketmock.plugins.sftp.session import SFTPSession
 from socketmock.plugins.sftp.stubs import StubStore
-from tests.plugins._helpers import FakeWriter
+from tests.unit.socketmock.plugins._helpers import FakeWriter
 
 
 def test_sftp_session_handles_file_and_directory_ops(tmp_path: Path) -> None:
@@ -96,6 +96,43 @@ def test_sftp_session_uses_stubbed_responses(tmp_path: Path) -> None:
         packet = sftp_codec.decode_packet(writer.writes[0])
         assert packet is not None
         packet_type, _ = packet
+        assert packet_type == sftp_codec.SSH_FXP_STATUS
+
+    asyncio.run(run_test())
+
+
+def test_sftp_session_supports_rename_and_directory_eof(tmp_path: Path) -> None:
+    async def run_test() -> None:
+        source = tmp_path / "source.txt"
+        source.write_text("hello", encoding="utf-8")
+        nested_dir = tmp_path / "nested"
+        nested_dir.mkdir()
+        (nested_dir / "child.txt").write_text("x", encoding="utf-8")
+
+        writer = FakeWriter()
+        session = SFTPSession(
+            asyncio.StreamReader(),
+            cast(asyncio.StreamWriter, writer),
+            StubStore(),
+            {"root": str(tmp_path)},
+        )
+
+        await session._handle_rename(
+            1,
+            sftp_codec.pack_string("/source.txt")
+            + sftp_codec.pack_string("/renamed.txt")
+            + sftp_codec.pack_u32(0),
+        )
+        assert not source.exists()
+        assert (tmp_path / "renamed.txt").exists()
+
+        await session._handle_opendir(2, sftp_codec.pack_string("/nested"))
+        dir_handle = next(key for key in session._handles if key != b"")
+        await session._handle_readdir(3, sftp_codec.pack_bytes(dir_handle))
+        await session._handle_readdir(4, sftp_codec.pack_bytes(dir_handle))
+        last_packet = sftp_codec.decode_packet(writer.writes[-1])
+        assert last_packet is not None
+        packet_type, _ = last_packet
         assert packet_type == sftp_codec.SSH_FXP_STATUS
 
     asyncio.run(run_test())

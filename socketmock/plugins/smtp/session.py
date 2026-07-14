@@ -62,10 +62,6 @@ class SMTPServerSession(ProtocolSession):
                 "pdu": {"command": command},
             }
         )
-        if not command:
-            await self._send_line(SMTPCodec.build_response(500, "empty command"))
-            return
-
         if self.state == "data":
             if command == ".":
                 self.received_messages.append("\n".join(self.message_lines))
@@ -75,6 +71,10 @@ class SMTPServerSession(ProtocolSession):
                 await self._send_line(SMTPCodec.build_response(250, "message accepted"))
                 return
             self.message_lines.append(command)
+            return
+
+        if not command:
+            await self._send_line(SMTPCodec.build_response(500, "empty command"))
             return
 
         verb, arg = SMTPCodec.parse_command(command)

@@ -4,7 +4,7 @@ from typing import cast
 from socketmock.plugins.smpp import codec as smpp_codec
 from socketmock.plugins.smpp.session import SMPPSession
 from socketmock.plugins.smpp.stubs import StubStore
-from tests.plugins._helpers import FakeWriter
+from tests.unit.socketmock.plugins._helpers import FakeWriter
 
 
 def test_smpp_session_handles_bind_submit_unbind_and_receipt() -> None:
