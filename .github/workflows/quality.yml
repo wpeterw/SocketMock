@@ -1,5 +1,8 @@
 name: Quality
 
+permissions:
+  contents: write
+
 on:
   pull_request:
   push:
