@@ -13,6 +13,7 @@ from typing import Any
 
 import paramiko
 import paramiko.sftp as paramiko_sftp
+import paramiko.util
 
 from ..base import ProtocolSession, ProtocolStubStore
 from . import codec as sftp_codec
