@@ -2,12 +2,17 @@ from __future__ import annotations
 
 import asyncio
 import itertools
+import logging
 import os
+import socket
 import tempfile
 import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+
+import paramiko
+import paramiko.sftp as paramiko_sftp
 
 from ..base import ProtocolSession, ProtocolStubStore
 from . import codec as sftp_codec
@@ -20,6 +25,140 @@ class OpenHandle:
     kind: str = "file"
     dir_entries: list[tuple[str, str, bytes]] | None = None
     dir_index: int = 0
+
+
+class _ParamikoSFTPHandle(paramiko.SFTPHandle):
+    def __init__(self, path: Path, fileobj: Any) -> None:
+        super().__init__()
+        self._path = path
+        self._fileobj = fileobj
+
+    def read(self, offset: int, length: int) -> bytes:
+        self._fileobj.seek(offset)
+        return self._fileobj.read(length)
+
+    def write(self, offset: int, data: Any) -> int:
+        self._fileobj.seek(offset)
+        self._fileobj.write(data)
+        self._fileobj.flush()
+        return paramiko_sftp.SFTP_OK
+
+    def stat(self) -> paramiko.SFTPAttributes:
+        return paramiko.SFTPAttributes.from_stat(self._path.stat())
+
+    def chattr(self, attr: paramiko.SFTPAttributes) -> int:
+        if attr.st_mode is not None:
+            os.chmod(self._path, attr.st_mode)
+        if attr.st_mtime is not None:
+            os.utime(self._path, (attr.st_mtime, attr.st_mtime))
+        return paramiko_sftp.SFTP_OK
+
+    def close(self) -> None:
+        self._fileobj.close()
+
+
+class _ParamikoSFTPServer(paramiko.SFTPServerInterface):
+    def __init__(self, server: paramiko.ServerInterface, session: SFTPSession) -> None:
+        super().__init__(server)
+        self._session = session
+
+    def _resolve(self, path: str) -> Path:
+        return self._session._resolve(path)
+
+    def list_folder(self, path: str) -> list[paramiko.SFTPAttributes] | int:
+        target = self._resolve(path)
+        if not target.exists() or not target.is_dir():
+            return paramiko_sftp.SFTP_NO_SUCH_FILE
+        return [
+            paramiko.SFTPAttributes.from_stat(child.stat())
+            for child in sorted(target.iterdir(), key=lambda item: item.name)
+        ]
+
+    def stat(self, path: str) -> paramiko.SFTPAttributes:
+        target = self._resolve(path)
+        if not target.exists():
+            raise FileNotFoundError(path)
+        return paramiko.SFTPAttributes.from_stat(target.stat())
+
+    def lstat(self, path: str) -> paramiko.SFTPAttributes:
+        return self.stat(path)
+
+    def open(self, path: str, flags: int, attr: paramiko.SFTPAttributes) -> _ParamikoSFTPHandle:
+        target = self._resolve(path)
+        if flags & os.O_CREAT:
+            target.parent.mkdir(parents=True, exist_ok=True)
+        mode = "rb"
+        if flags & (os.O_WRONLY | os.O_RDWR):
+            mode = "r+b"
+            if flags & os.O_TRUNC:
+                mode = "w+b"
+            elif flags & os.O_APPEND:
+                mode = "a+b"
+        elif flags & os.O_RDONLY:
+            mode = "rb"
+        elif flags & os.O_APPEND:
+            mode = "ab"
+        fileobj = open(target, mode)
+        if flags & os.O_CREAT and not target.exists():
+            fileobj.close()
+            fileobj = open(target, mode)
+        return _ParamikoSFTPHandle(target, fileobj)
+
+    def remove(self, path: str) -> int:
+        target = self._resolve(path)
+        if not target.exists():
+            return paramiko_sftp.SFTP_NO_SUCH_FILE
+        target.unlink()
+        return paramiko_sftp.SFTP_OK
+
+    def mkdir(self, path: str, attr: paramiko.SFTPAttributes) -> int:
+        target = self._resolve(path)
+        target.mkdir(parents=True, exist_ok=True)
+        return paramiko_sftp.SFTP_OK
+
+    def rmdir(self, path: str) -> int:
+        target = self._resolve(path)
+        if not target.exists() or not target.is_dir():
+            return paramiko_sftp.SFTP_NO_SUCH_FILE
+        target.rmdir()
+        return paramiko_sftp.SFTP_OK
+
+    def rename(self, oldpath: str, newpath: str) -> int:
+        source = self._resolve(oldpath)
+        destination = self._resolve(newpath)
+        if not source.exists():
+            return paramiko_sftp.SFTP_NO_SUCH_FILE
+        source.rename(destination)
+        return paramiko_sftp.SFTP_OK
+
+    def chattr(self, path: str, attr: paramiko.SFTPAttributes) -> int:
+        target = self._resolve(path)
+        if not target.exists():
+            return paramiko_sftp.SFTP_NO_SUCH_FILE
+        if attr.st_mode is not None:
+            os.chmod(target, attr.st_mode)
+        if attr.st_mtime is not None:
+            os.utime(target, (attr.st_mtime, attr.st_mtime))
+        return paramiko_sftp.SFTP_OK
+
+
+class _ParamikoServerInterface(paramiko.ServerInterface):
+    def __init__(self, session: SFTPSession) -> None:
+        self._session = session
+
+    def check_auth_password(self, username: str, password: str) -> int:
+        return 0
+
+    def get_allowed_auths(self, username: str) -> str:
+        return "password"
+
+    def check_channel_request(self, kind: str, chanid: int) -> int:
+        if kind == "session":
+            return 0
+        return 1
+
+    def check_channel_subsystem_request(self, channel: paramiko.Channel, name: str) -> bool:
+        return super().check_channel_subsystem_request(channel, name)
 
 
 class SFTPSession(ProtocolSession):
@@ -48,22 +187,53 @@ class SFTPSession(ProtocolSession):
             self.session_id,
             {"sessionId": self.session_id, "peer": self.peer, "bound": True, "handle": self},
         )
-        buf = bytearray()
         try:
-            while True:
-                chunk = await self.reader.read(4096)
-                if not chunk:
-                    break
-                buf.extend(chunk)
-                while True:
-                    packet = sftp_codec.decode_packet(bytes(buf))
-                    if packet is None:
-                        break
-                    packet_type, payload = packet
-                    del buf[: 4 + len(payload) + 1]
-                    await self._dispatch_packet(packet_type, payload)
-        except (ConnectionResetError, asyncio.IncompleteReadError):
-            pass
+            print("RUN_START", flush=True)
+            socket_obj = None
+            writer_transport = getattr(self.writer, "get_extra_info", None)
+            if callable(writer_transport):
+                try:
+                    socket_obj = writer_transport("socket")
+                except Exception:
+                    socket_obj = None
+            if socket_obj is None:
+                transport = getattr(self.writer, "transport", None)
+                if transport is not None:
+                    transport_get_extra_info = getattr(transport, "get_extra_info", None)
+                    if callable(transport_get_extra_info):
+                        try:
+                            socket_obj = transport_get_extra_info("socket")
+                        except Exception:
+                            socket_obj = None
+            if socket_obj is not None:
+                transport_obj = getattr(self.writer, "transport", None)
+                if hasattr(socket_obj, "dup"):
+                    socket_obj = socket_obj.dup()
+                if transport_obj is not None and hasattr(transport_obj, "pause_reading"):
+                    transport_obj.pause_reading()
+                if transport_obj is not None and hasattr(transport_obj, "close"):
+                    transport_obj.close()
+                try:
+                    await asyncio.to_thread(self._run_paramiko_server, socket_obj)
+                except Exception:
+                    raise
+            else:
+                buf = bytearray()
+                try:
+                    while True:
+                        chunk = await self.reader.read(4096)
+                        if not chunk:
+                            break
+                        buf.extend(chunk)
+                        while True:
+                            packet = sftp_codec.decode_packet(bytes(buf))
+                            if packet is None:
+                                break
+                            packet_type, payload = packet
+                            del buf[: 4 + len(payload) + 1]
+                            await self._dispatch_packet(packet_type, payload)
+                except (ConnectionResetError, asyncio.IncompleteReadError):
+                    pass
         finally:
             self.store.unregister_session(self.session_id)
             for handle in self._handles.values():
@@ -71,6 +241,38 @@ class SFTPSession(ProtocolSession):
                 if callable(close):
                     close()
             self.writer.close()
+
+    def _run_paramiko_server(self, socket_obj: Any) -> None:
+        logging.basicConfig(level=logging.DEBUG)
+        paramiko.util.get_logger("paramiko").setLevel(logging.DEBUG)
+        print("RUN_PARAMIKO_START", flush=True)
+        if hasattr(socket_obj, "detach"):
+            fd = socket_obj.detach()
+            socket_obj = socket.socket(fileno=fd)
+        socket_obj.setblocking(True)
+        socket_obj.settimeout(None)
+        host_key = paramiko.RSAKey.generate(2048)
+        transport = paramiko.Transport(socket_obj)
+        print("TRANSPORT_CREATED", flush=True)
+        transport.add_server_key(host_key)
+        transport.set_subsystem_handler(
+            "sftp",
+            paramiko.SFTPServer,
+            _ParamikoSFTPServer,
+            self,
+        )
+        print("BEFORE_START_SERVER", flush=True)
+        transport.start_server(server=_ParamikoServerInterface(self))
+        print("AFTER_START_SERVER", flush=True)
+        while transport.is_active():
+            channel = transport.accept(1)
+            if channel is not None:
+                print("CHANNEL", channel, flush=True)
+                print("CHANNEL_OPEN", channel.get_name(), channel.closed, flush=True)
+                channel.set_name("sftp")
+        if transport.is_active():
+            transport.close()
+        print("RUN_PARAMIKO_DONE", flush=True)
 
     async def _dispatch_packet(self, packet_type: int, payload: bytes) -> None:
         if packet_type == sftp_codec.SSH_FXP_INIT:

@@ -14,7 +14,12 @@ dev = [
     "pyx12>=4.0.0",
     "smpplib>=2.2.4",
     "iso8583>=1.4",
+    "ebcdic",
+    "paramiko>=3.5.0",
 ]
+
+[tool.uv.extra-build-dependencies]
+iso8583 = ["ebcdic"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
