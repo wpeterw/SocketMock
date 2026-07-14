@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+# SFTP protocol plugin implementation.
 import asyncio
 from typing import Any
 

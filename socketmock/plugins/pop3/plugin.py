@@ -1,18 +1,19 @@
 from __future__ import annotations
 
-# SMPP protocol plugin implementation.
+# POP3 protocol plugin implementation.
 import asyncio
 from typing import Any
 
+from libs.stubs import StubStore
+
 from ..base import ProtocolPlugin, ProtocolStubStore
-from .session import SMPPSession
-from .stubs import StubStore
+from .session import POP3ServerSession
 
 
-class SMPPPlugin(ProtocolPlugin):
-    name: str = "smpp"
-    description: str = "Protocol mock service"
-    default_port: int = 2775
+class POP3Plugin(ProtocolPlugin):
+    name: str = "pop3"
+    description: str = "POP3 mailbox mock"
+    default_port: int = 2780
 
     def create_store(self) -> ProtocolStubStore:
         return StubStore()
@@ -23,5 +24,5 @@ class SMPPPlugin(ProtocolPlugin):
         writer: asyncio.StreamWriter,
         store: ProtocolStubStore,
         config: dict[str, Any] | None = None,
-    ) -> SMPPSession:
-        return SMPPSession(reader, writer, store, config or {})
+    ) -> POP3ServerSession:
+        return POP3ServerSession(reader, writer, store, config or {})

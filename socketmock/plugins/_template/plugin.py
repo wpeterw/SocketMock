@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+# Template plugin module for creating new protocol plugins.
 from ..base import ProtocolPlugin, ProtocolStubStore
 from .session import ExampleSession
 

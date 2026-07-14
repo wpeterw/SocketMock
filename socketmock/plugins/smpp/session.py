@@ -154,12 +154,7 @@ class SMPPSession(ProtocolSession):
         seq = in_pdu["sequence_number"]
         resp_name = BIND_RESP[name]
 
-        creds = self.config.get("credentials")
         status = 0
-        if creds:
-            expected = creds.get(in_pdu.get("system_id"))
-            if expected is None or expected != in_pdu.get("password"):
-                status = pdumod.ESME_RINVPASWD
 
         if status == 0:
             self.bound = True

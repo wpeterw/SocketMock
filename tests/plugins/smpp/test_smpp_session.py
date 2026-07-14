@@ -81,6 +81,35 @@ def test_smpp_session_handles_bind_submit_unbind_and_receipt() -> None:
     asyncio.run(run_test())
 
 
+def test_smpp_session_accepts_any_credentials() -> None:
+    async def run_test() -> None:
+        writer = FakeWriter()
+        session = SMPPSession(
+            asyncio.StreamReader(),
+            cast(asyncio.StreamWriter, writer),
+            StubStore(),
+            {"credentials": {"sys": "pwd"}},
+        )
+
+        await session._handle_pdu(
+            {
+                "command_name": "bind_transceiver",
+                "sequence_number": 1,
+                "system_id": "someone-else",
+                "password": "not-the-configured-password",
+            }
+        )
+
+        assert session.bound is True
+        assert session.system_id == "someone-else"
+        assert any(
+            smpp_codec.decode_pdu(packet)["command_name"] == "bind_transceiver_resp"
+            for packet in writer.writes
+        )
+
+    asyncio.run(run_test())
+
+
 def test_smpp_session_run_processes_packets_from_reader() -> None:
     async def run_test() -> None:
         reader = asyncio.StreamReader()

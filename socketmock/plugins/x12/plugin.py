@@ -1,18 +1,19 @@
 from __future__ import annotations
 
-# SMPP protocol plugin implementation.
+# X12 EDI protocol plugin implementation.
 import asyncio
 from typing import Any
 
+from libs.stubs import StubStore
+
 from ..base import ProtocolPlugin, ProtocolStubStore
-from .session import SMPPSession
-from .stubs import StubStore
+from .session import X12Session
 
 
-class SMPPPlugin(ProtocolPlugin):
-    name: str = "smpp"
-    description: str = "Protocol mock service"
-    default_port: int = 2775
+class X12Plugin(ProtocolPlugin):
+    name: str = "x12"
+    description: str = "X12 EDI message mock"
+    default_port: int = 2777
 
     def create_store(self) -> ProtocolStubStore:
         return StubStore()
@@ -23,5 +24,5 @@ class SMPPPlugin(ProtocolPlugin):
         writer: asyncio.StreamWriter,
         store: ProtocolStubStore,
         config: dict[str, Any] | None = None,
-    ) -> SMPPSession:
-        return SMPPSession(reader, writer, store, config or {})
+    ) -> X12Session:
+        return X12Session(reader, writer, store, config or {})

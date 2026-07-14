@@ -10,11 +10,12 @@
   of hand-rolling test infrastructure. Configure stub responses, watch a request
   journal, and trigger protocol-specific events on demand.
 
-  The core runtime is plugin-based: built-in plugins such as `smpp` and `sftp`
-  implement protocol behavior, while new plugins can be added by creating a new
-  package under `socketmock/plugins/<protocol>/`. The registry discovers plugin
-  packages automatically, so contributors do not need to edit a central registry
-  file when they add a new protocol.
+  The core runtime is plugin-based: built-in plugins such as `smpp`, `sftp`,
+  `hl7v2`, `x12`, `iso8583`, `smtp`, `pop3`, and `imap` implement protocol
+  behavior, while new plugins can be added by creating a new package under
+  `socketmock/plugins/<protocol>/`. The registry discovers plugin packages
+  automatically, so contributors do not need to edit a central registry file
+  when they add a new protocol.
 
   ## Run it with Docker
 
@@ -42,7 +43,8 @@
   uv run python -m socketmock.app --port 2775 --admin-port 8080
   ```
 
-  Optional authentication:
+  Auth-capable protocols accept any credentials supplied by a client. You can still
+  pass explicit credentials at startup if you want to document them in your test setup:
 
   ```bash
   uv run python -m socketmock.app --credential loadtest:secret --credential otheruser:pw2
@@ -53,6 +55,70 @@
   ```bash
   uv run python -m socketmock.app --protocol smpp --port 2775 --admin-port 8080
   ```
+
+  ## Built-in protocol plugins
+
+  All built-in plugins are started the same way; only the protocol name and port change:
+
+  ```bash
+  uv run python -m socketmock.app --protocol <name> --port <port> --admin-port 8080
+  ```
+
+  ### SMPP
+
+  - Protocol: SMPP 3.4-style messaging over TCP.
+  - Capabilities: binds (`bind_transceiver`, `bind_receiver`, `bind_transmitter`), submits messages with `submit_sm`, answers `enquire_link`, and can emit simulated delivery receipts when a stub requests them.
+  - Limitations: this is a mock transport, not a full SMSC; it does not implement the full SMPP feature set, optional TLVs, or real message delivery.
+  - How to use it: start with `--protocol smpp` (default port `2775`) and send PDUs from a client; use the admin API to inspect sessions and stub responses.
+
+  ### SFTP
+
+  - Protocol: SSH File Transfer Protocol packets.
+  - Capabilities: supports SSH_FXP_INIT, open/close/read/write, directory operations, stat/lstat/setstat/remove/mkdir/rmdir, and realpath against a local filesystem root.
+  - Limitations: it is not a full SSH server and does not implement the complete SFTP extension set or real authentication/permissions.
+  - How to use it: start with `--protocol sftp` (default port `2222`); connect with an SFTP client or a test harness that speaks the binary packet format.
+
+  ### HL7 v2
+
+  - Protocol: HL7 v2 over MLLP framing.
+  - Capabilities: accepts framed HL7 messages and returns a simple ACK (`MSA|AA|...`) with the original control ID.
+  - Limitations: this is a lightweight mock parser; it does not provide full HL7 validation, segment libraries, or real workflow routing.
+  - How to use it: start with `--protocol hl7v2` (default port `2776`) and send MLLP-framed HL7 payloads from a client.
+
+  ### X12 EDI
+
+  - Protocol: X12 EDI over a plain TCP stream.
+  - Capabilities: parses transaction messages terminated by `~` and responds with a basic 997 functional acknowledgement.
+  - Limitations: it does not implement full X12 transaction set validation or every possible segment variant.
+  - How to use it: start with `--protocol x12` (default port `2777`) and send X12 payloads from a client or test harness.
+
+  ### ISO 8583
+
+  - Protocol: ISO 8583 length-prefixed binary messages.
+  - Capabilities: decodes ISO 8583 messages, returns a protocol response with a response MTI, and preserves common fields such as `11`, `12`, `37`, and `39`.
+  - Limitations: it is a protocol mock, not a payment processor; it does not perform real card validation, switching, or full field-level processing.
+  - How to use it: start with `--protocol iso8583` (default port `2778`) and send framed ISO 8583 messages from a client.
+
+  ### SMTP
+
+  - Protocol: SMTP command-response conversations.
+  - Capabilities: supports `HELO`/`EHLO`, `AUTH`, `MAIL FROM`, `RCPT TO`, `DATA`, `RSET`, `NOOP`, and `QUIT`, and collects messages in memory for later inspection.
+  - Limitations: it does not deliver mail externally, does not implement the full SMTP command set, and does not offer real queueing or relay behavior.
+  - How to use it: start with `--protocol smtp` (default port `2779`) and talk to it with a mail client or raw TCP client.
+
+  ### POP3
+
+  - Protocol: POP3 mailbox access over TCP.
+  - Capabilities: supports `USER`, `PASS`, `STAT`, `LIST`, `RETR`, `DELE`, `RSET`, `NOOP`, and `QUIT` with an in-memory mailbox and delete/undelete semantics.
+  - Limitations: it is a simple mailbox mock, not a full mail server; mailbox contents reset with the process and there is no real message persistence or server-side storage.
+  - How to use it: start with `--protocol pop3` (default port `2780`) and interact with it using a POP3 client or a raw socket.
+
+  ### IMAP
+
+  - Protocol: IMAP mailbox access over TCP.
+  - Capabilities: supports `LOGIN`, `CAPABILITY`, `LIST`, `SELECT`, `FETCH`, `EXPUNGE`, `CLOSE`, `NOOP`, and `LOGOUT` with a simple in-memory mailbox.
+  - Limitations: it is a lightweight IMAP mock and does not implement the full IMAP command grammar, server state model, or real mailbox syncing.
+  - How to use it: start with `--protocol imap` (default port `2781`) and talk to it with an IMAP client or raw TCP client.
 
   ## Concepts
 
