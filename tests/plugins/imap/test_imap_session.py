@@ -13,7 +13,7 @@ def test_imap_session_handles_login_list_fetch_and_logout() -> None:
         session = IMAPServerSession(reader, cast(asyncio.StreamWriter, writer), StubStore(), {})
         reader.feed_data(
             b"a001 LOGIN user password\r\n"
-            b"a002 LIST \"\" *\r\n"
+            b'a002 LIST "" *\r\n'
             b"a003 SELECT INBOX\r\n"
             b"a004 FETCH 1 BODY[TEXT]\r\n"
             b"a005 LOGOUT\r\n"
